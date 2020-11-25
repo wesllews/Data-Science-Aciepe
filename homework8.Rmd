@@ -1,0 +1,99 @@
+---
+title: "Homework 8"
+author: "Weslley dos Santos Silva"
+output:
+  html_document: default
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(sidrar)
+library(ggplot2)
+library(scales)
+library(dynlm)
+```
+# Exercício 1
+
+A)
+```{r}
+#Sem ajuste sazonal
+tabela = get_sidra(api='/t/1620/n1/all/v/all/p/all/c11255/90687,90691,90696,90707,93404,93405,93406,93407,93408/d/v583%202')
+#com ajuste sazonal
+tabela_sa = get_sidra(api='/t/1621/n1/all/v/all/p/all/c11255/90687,90691,90696,90707,93404,93405,93406,93407,93408/d/v584%202')
+```
+
+B)
+```{r}
+# Dados não sazonais
+pib =
+  get_sidra(api='/t/1620/n1/all/v/all/p/all/c11255/90687,90691,90696,90707,93404,93405,93406,93407,93408/d/v583%202') %>%
+  mutate(date = as.yearqtr(`Trimestre (Código)`, format='%Y%q')) %>%
+  select(date, `Setores e subsetores`, Valor) 
+
+pib$`Setores e subsetores` = ifelse(pib$`Setores e subsetores` =='Despesa de consumo da administração pública', 'Consumo do Governo', pib$`Setores e subsetores`)
+
+#  spread(`Setores e subsetores`, Valor) %>%
+#  as_tibble()
+```
+
+C)
+```{r}
+ggplot(pib, aes(x = as.Date(date), y = Valor)) +
+  geom_line()+
+  facet_wrap(~pib$`Setores e subsetores`, ncol=3, scales="free_y")+
+  theme_minimal()+
+  labs(
+    title = "PIB e seus componentes",
+    subtitle = "(Sem ajuste sazonal)",
+    x = "Data",
+    y = "Valor",
+    caption = "Fonte: Sistema IBGE de Recuperação Automática - SIDRA"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, vjust = +2, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5,vjust = +3),
+    strip.text = element_text(size=8, color="dodgerblue4",face="bold"),
+  )
+```
+
+
+D)
+```{r}
+# Dados sazonais
+pib_sa =
+  get_sidra(api='/t/1621/n1/all/v/all/p/all/c11255/90687,90691,90696,90707,93404,93405,93406,93407,93408/d/v584%202') %>%
+  mutate(date = as.yearqtr(`Trimestre (Código)`, format='%Y%q')) %>%
+  select(date, `Setores e subsetores`, Valor) 
+
+pib_sa$`Setores e subsetores` = ifelse(pib_sa$`Setores e subsetores` =='Despesa de consumo da administração pública', 'Consumo do Governo', pib$`Setores e subsetores`)
+```
+
+
+E)
+```{r}
+cols <- c("Original" = "gray50" , "Dessasonalizada" ="dodgerblue4" )
+
+ggplot() +
+  geom_line(data = pib, mapping= aes(x = as.Date(date), y = Valor, color="Original"))+
+  geom_line(data = pib_sa, mapping= aes(x = as.Date(date), y = Valor, color="Dessasonalizada"))+
+  facet_wrap(~`Setores e subsetores`, ncol=3, scales="free_y")+
+  scale_color_manual(values = cols)+
+  theme_minimal()+
+  labs(
+    title = "Diferenças entres as séries do PIB",
+    x = "Data",
+    y = "Valor",
+    color="Série:",
+    caption = "Fonte: Sistema IBGE de Recuperação Automática - SIDRA"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, vjust = +2, face = "bold"),
+    strip.text = element_text(size=8,face="bold"),
+    legend.position = "top"
+  )
+```

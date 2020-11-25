@@ -1,0 +1,232 @@
+---
+title: "Homework 7"
+author: "Weslley dos Santos Silva"
+output:
+  html_document: default
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(coronavirus)
+require(maps)
+#update_dataset()
+data(coronavirus)
+
+cores = c("#2F95D4","#7CE47F","#FFCC14","#EF492B","#E718A5")
+```
+
+
+# Brasil
+Considerando a ação do COVID-19 no Brasil podemos tentar trazer o perfil de relação entre casos confirmados, recuperados e as mortes. 
+
+```{r}
+grafico = coronavirus %>%
+   filter(country == "Brazil", date>"2020-02-20") %>% 
+  group_by(type,date) %>% 
+  summarise(total = sum(cases)) %>% 
+  spread(key=type,value=total,fill=0)
+
+ggplot(grafico, aes(x=recovered, y=death, size = confirmed)) +
+  geom_point(alpha=0.6)+
+  scale_size(range = c(0, 10))+
+  theme_classic()+
+  labs(
+    title = "COVID-19: Tipos de casos",
+    x = "Recuperados",
+    y = "Mortes",
+    size="Confirmados")+
+  theme(
+    plot.title = element_text(hjust = 0.5,face = "bold"),
+    legend.position = "right"
+  )
+```
+
+
+Considerando o gráfico acima, podemos notar que a relação óbvia que o número de mortes aumentou com o aumento de notificações de casos de COVID mas não ultrassam 1.500 mortes por dia, o que já é um número alto. É possível ver que enquanto as confirmações ou diagnósticos de pacientes com COVID chegam a mais de 40 mil por dia, as taxas de recuperações ainda se concentram em menos de 25 mil.
+  
+Poderiamos ainda analisar o números ocorrências por tipo de casos. Por exemplo, as ocorrências de recuperados em relação a número de mortes.
+
+
+```{r}
+cols <- c("Recuperados" = "#2166AC" , "Mortes" = "#B2182C")
+
+ggplot(grafico, color="white")+
+  geom_col(mapping = aes(x=date,y=recovered, fill="Recuperados"))+
+  geom_col(mapping = aes(x=date,y=death, fill="Mortes"))+
+  theme_minimal()+
+  labs(
+    title = "Números por tipos de casos",
+    x = "Data",
+    y = "Nº de casos",
+    fill="Casos")+
+  theme(
+    plot.title = element_text(hjust = 0.5,face = "bold"),
+    legend.position = "right",
+  )
+```
+
+
+Através desse gráfico podemos ver que o ínicio da pandemia apresentou muito mais notificações de casos em que os indivíduos moreram do que recuperados. Talvez esse comportamento possa ser explicado pela pouca experiência de toda a população quanto ao vírus, quanto um gargalo de notificação.
+
+# USA
+Podemos fazer a mesma abordagem dosc tipos de casos de COVID quanto aos dados dos Estados Unidos.
+
+```{r}
+grafico = coronavirus %>%
+   filter(country == "US") %>% 
+  group_by(type,date) %>% 
+  summarise(total = sum(cases)) %>% 
+  spread(key=type,value=total,fill=0)
+
+ggplot(grafico, aes(x=recovered, y=death, size = confirmed)) +
+  geom_point(alpha=0.6)+
+  scale_size(range = c(0, 10))+
+  theme_classic()+
+  labs(
+    title = "COVID-19: Tipos de casos",
+    x = "Recuperados",
+    y = "Mortes",
+    size="Confirmados")+
+  theme(
+    plot.title = element_text(hjust = 0.5,face = "bold"),
+    legend.position = "right"
+  )
+```
+
+Comparados com os do Brasil, podemos identificar que o número de notificações nos Estados Unidas começam muito maiores do que no Brasil Em contra partida o número de mortes atigem números muito mais altos e o número de casos recuperados se encontram concentrados em taxas muito menores.
+
+# Mundial
+Vamos analisar os TOP 5 países em casos de covid
+
+```{r}
+top5 = coronavirus %>%
+  filter(type == "confirmed") %>% 
+  group_by(country) %>% 
+  summarise(total = sum(cases)) %>% 
+  arrange(desc(total)) %>%
+  head(5)
+
+top5 %>%
+  knitr::kable()
+
+top5 = as.vector(top5$country)
+```
+
+
+Observando a distribuição de área dos casos confirmados, recuperados e mortes.
+```{r}
+grafico = coronavirus %>%
+  filter(country %in% top5) %>% 
+  group_by(country,type,date) %>% 
+  summarise(total = sum(cases))
+
+ggplot(grafico, aes(x=as.Date(date), y=total, fill=country)) + 
+    geom_area() +
+   facet_wrap(~type, ncol=1, scales="free_y") +
+    scale_fill_manual(values= cores)+
+   theme_minimal()+
+  labs(
+    title = "Os 5 países com mais casos",
+    x = "Data",
+    y = "Nº de casos",
+    fill="País")+
+  theme(
+    plot.title = element_text(hjust = 0.5,face = "bold"),
+    legend.position = "right"
+  )
+
+```
+
+# Mapas
+```{r}
+coronaMundi = coronavirus %>% 
+  select(country,type,cases) %>% 
+  group_by(country,type) %>% 
+  summarise(total_cases = sum(cases))
+
+#Ajustando algumas diferenças de nomes
+coronaMundi$country = ifelse(coronaMundi$country=="US","USA",coronaMundi$country)
+coronaMundi$country = ifelse(coronaMundi$country=="Congo (Brazzaville)","Republic of Congo",coronaMundi$country)
+coronaMundi$country = ifelse(coronaMundi$country=="Congo (Kinshasa)","Democratic Republic of the Congo",coronaMundi$country)
+coronaMundi$country = ifelse(coronaMundi$country=="Cote d'Ivoire","Democratic Republic of the Congo",coronaMundi$country)
+
+# Dados para mapa mundi
+world_map <- map_data("world")
+```
+
+
+## Casos confirmados no mundo
+Com o gráfico abaixo podemos identificar os USA como o país com maior número de casos confirmados, como já visto anteriormente, seguido por Brasil, Rússia e india.
+```{r}
+mapaConfirmado = coronaMundi %>% filter(type=="confirmed")
+
+mapa = world_map %>%
+  left_join(mapaConfirmado, by=c("region"="country")) 
+
+ggplot(mapa, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill=total_cases), colour = "white")+
+  scale_fill_gradient(high = "#B2182C", low = "#2166AC", na.value = "azure2" )+
+  theme_void()+
+  labs(
+    title = "Número de casos confirmados no mundo",
+    face = "bold",
+    fill="Total")+
+  theme(
+    plot.title = element_text(vjust = 3, face = "bold"),
+    legend.position = "right",
+    panel.background = element_rect(fill = "lightblue")
+  )
+```
+
+
+## Mortes no mundo
+Podemos ver que quando relatamos os países com maior numero de mortos por covid, temos uma semelhança com o gráfico de casos confirmados.
+```{r}
+mapaMortes = coronaMundi %>% filter(type=="death")
+
+mapa = world_map %>%
+  left_join(mapaMortes, by=c("region"="country")) 
+
+ggplot(mapa, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill=total_cases), colour = "white")+
+ scale_fill_gradient(high = "#B2182C", low = "#2166AC", na.value = "azure2" )+
+  theme_void()+
+  labs(
+    title = "Número de mortes no mundo",
+    face = "bold",
+    fill="Total")+
+  theme(
+    plot.title = element_text(vjust = 3, face = "bold"),
+    legend.position = "right",
+    panel.background = element_rect(fill = "lightblue")
+  )
+```
+
+## Recuperados no mundo
+Entretranto quando analisamos os casos recuperados vemos o Brasil é o primeiro países com maior número de casos e em seguida temos USA, Russia e Índia.
+```{r}
+mapaRecuperados = coronaMundi %>% filter(type=="recovered")
+
+mapa = world_map %>%
+  left_join(mapaRecuperados, by=c("region"="country")) 
+
+ggplot(mapa, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill=total_cases), colour = "white")+
+  scale_fill_gradient(high = "#B2182C", low = "#2166AC", na.value = "azure2" )+
+  theme_void()+
+  labs(
+    title = "Número de casos recuperados no mundo",
+    face = "bold",
+    fill="Total")+
+  theme(
+    plot.title = element_text(vjust = 3, face = "bold"),
+    legend.position = "right",
+    panel.background = element_rect(fill = "lightblue")
+  )
+```

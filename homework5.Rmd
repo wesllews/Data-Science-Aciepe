@@ -1,0 +1,157 @@
+---
+title: "Homework 5"
+author: "Weslley dos Santos Silva"
+output:
+html_document: default
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=TRUE, include=FALSE}
+setwd(getwd())
+library(dplyr)
+library(ggplot2)
+library(gtrendsR)
+```
+
+# Definindo pesquisa:  
+Recentemente todos puderam acompanhar que a morte de George Floyd nos Estados Unidos desencadeou uma discussão social muito importante, principalmente em torno de Racismo, Preconceito e Violência policial. Dessa forma o objetivo é entender como os eventos atuais influenciaram nas buscas de conteúdos na internet.  
+
+Primeiro gostaria de apresentar de forma relativa a distribuição das pesquisas no último ano em torno de três palavras importantes para a conjuntura atual.
+```{r}
+# Racismo Geral
+racismoGeral <- gtrends(
+  keyword = c("Racismo","Preconceito","George Floyd"), geo = "BR", time = "today 12-m")
+time_trend <- racismoGeral$interest_over_time
+time_trend$hits = ifelse(time_trend$hits =="<1",0.5,time_trend$hits)
+time_trend$date = as.Date(time_trend$date)
+
+# Gráfico de Pizza
+ggplot(time_trend, aes(x="", y=as.numeric(hits), fill=keyword, group = keyword)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0)+
+  ggtitle("Distribuição das Buscas pelas palavras:")+
+  theme_void() + 
+ theme(legend.title = element_blank(),legend.position="bottom",legend.text=element_text(size=12))
+```
+
+
+É claro que as pesquisas sobre racismos e problemas sociais sempre estão presentes no google, mas qual é o perfil dessas buscas e como é o comportamento dessas buscas por exemplo nos últimos 5 anos no Brasil? 
+Podemos primeiramente olhar de forma geral e evidenciar a crescente das buscas no dia do assassinato de Geroge Floyd, 25 de maio.
+```{r}
+racismo5Anos <- gtrends(
+  keyword = c("Racismo","George floyd","Preconceito"), geo = "BR", time = "today+5-y")
+CincoAnos_trend <- racismo5Anos$interest_over_time
+CincoAnos_trend$hits = ifelse(CincoAnos_trend$hits =="<1",0.5,CincoAnos_trend$hits)
+CincoAnos_trend$date = as.Date(CincoAnos_trend$date)
+
+ggplot(data = CincoAnos_trend) +
+  geom_line(aes(x = date, y =as.numeric(hits),group=keyword, color = keyword)) +
+  geom_vline(xintercept = as.numeric(as.Date("2020-05-25")), linetype = 3, color="black") +
+  labs(title = "Interese nos últimos 5 anos", y = "Interesse relativo") + 
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text=element_text(size=10),
+        axis.title.x=element_blank())
+```
+
+
+A Seguir vou destacar com linhas pontilhadas em vermelho todas o dia 20 de Novembro de cada ano, Dia da Consciência Negra. E apesar de ser um pouco óbvio, podemos ver que sempre próximo a essas datas temos números maiores de busca pelo assunto mas vale destacar que essa data anualmente apresentava  até o momento as máximas de procuras sobre os assuntos "Racismo" mas nem sempre sobre "Preconceito" visto que a discussão de preconceitos é muito mais abrangente em relação a grupos e minorias. 
+```{r}
+ggplot(data = CincoAnos_trend) +
+  geom_line(aes(x = date, y =as.numeric(hits),group=keyword, color = keyword)) +
+  geom_vline(xintercept = as.numeric(as.Date("2019-11-20")), linetype = 3, color="red") +
+  geom_vline(xintercept = as.numeric(as.Date("2018-11-20")), linetype = 3, color="red") +
+  geom_vline(xintercept = as.numeric(as.Date("2017-11-20")), linetype = 3, color="red") +
+  geom_vline(xintercept = as.numeric(as.Date("2016-11-20")), linetype = 3, color="red") +
+  geom_vline(xintercept = as.numeric(as.Date("2015-11-20")), linetype = 3, color="red") +
+  labs(title = "Interese próximo ao dia de Consciência Negra", y = "Interesse relativo") + 
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text=element_text(size=10),
+        axis.title.x=element_blank())
+  
+```
+
+# Interresse por região
+Podemos destacar como foram as buscas protestos em cada estado durante o período de repercussão do assunto na mídia.
+```{r}
+Protesto <- gtrends(
+  keyword = c("Protesto"), geo = "BR", time = "2020-05-25 2020-06-07")
+time_trend <- Protesto$interest_over_time
+time_trend$hits = ifelse(time_trend$hits =="<1",0.5,time_trend$hits)
+time_trend$date = as.Date(time_trend$date)
+
+region_trend <- Protesto$interest_by_region
+
+ggplot(data = region_trend) + 
+  geom_bar(aes(x = location, weight = hits),fill = rainbow(1))+
+  labs(title = "Interese em protesto por estado", x="Data", y="Interesse Relativo") + 
+  theme_minimal() +
+  coord_flip()+
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text=element_text(size=10),
+        axis.title.y=element_blank(),
+        axis.title.x=element_blank()
+        )
+```
+
+Além de podermos utilizar das diferenças entre os ídices de buscas no Brasil e nos Estados Unidos como forma de avaliar as motivações da população com base no assunto mais comentado quanto aos problemas socias.  
+
+Com os gráficos abaixo podemos notar que no Brasil o índice relativo de pesquisas por racismo é maior do que nos Estados Unidos, mas também revelam sua sasonalidade de pesquisas, que o conteúdo é muito mais procurados próximo a eventos e datas relacionados a população preta, como foi analisado acima.  
+Temos diversos meios de perceber que a luta da população negra no Brasil não tinha o seu foco na violência policial, uma vez que temos frequentemente jovens negros sendo mortos e não são feitas comossões sociais tão intensas.  
+```{r}
+# Definindo a pesquisa
+keywords=c("Racismo","Brutalidade policial")
+country=c("BR")
+time = "today 12-m"
+
+trends = gtrends(keyword=keywords, geo=country, time = time)
+time_trend=trends$interest_over_time
+time_trend$hits = ifelse(time_trend$hits=="<1",0.5,time_trend$hits)
+
+plot <-ggplot(data=time_trend)+
+  geom_line(aes(x=date,y=as.numeric(hits),group=keyword,col=keyword))+
+  labs(title = "Uso de buscas como parametro para motivações", x="Data", y="Interesse Relativo") + 
+  theme_minimal()+
+  theme(legend.title = element_blank(),
+        legend.position="bottom",
+        legend.text=element_text(size=12),
+        axis.title.x=element_blank())+
+  facet_wrap(. ~ keyword, ncol = 1)
+plot
+```
+
+Por sua nos Estados Unidos os protestos se desendadearam apartir da violência policial, então esse é um dos assuntos que tiveram um crescimento de buscas, pontuando o racismo e a violência policial.
+```{r}
+keywords=c("Racism","Police brutality")
+country=c("US")
+
+trends = gtrends(keyword=keywords, geo=country, time = time)
+time_trend=trends$interest_over_time
+time_trend$hits = ifelse(time_trend$hits=="<1",0.5,time_trend$hits)
+
+plot <-ggplot(data=time_trend)+
+  geom_line(aes(x=date,y=as.numeric(hits),group=keyword,col=keyword))+
+  labs(title = "Uso de buscas como parametro para motivações", x="Data", y="Interesse Relativo") + 
+  theme_minimal()+
+  theme(legend.title = element_blank(),
+        legend.position="bottom",
+        legend.text=element_text(size=12),
+        axis.title.x=element_blank())+
+  facet_wrap(. ~ keyword, ncol = 1)
+plot
+```
+
+# Conclusão
+
+O Objetivo desse trabalho foi demonstrar como a forma de posicionamento popular pode mudar completamente a forma de buscas e acesso a informação na era da mídia digital, mas pontuar que ainda é necessário muitos avanços quanto as discussões sociais e enfrentamento do racismo.
+
+
+  
+  

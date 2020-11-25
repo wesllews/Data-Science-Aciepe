@@ -1,0 +1,180 @@
+---
+title: "Homework 6"
+author: "Weslley dos Santos Silva"
+output:
+html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=TRUE, include=FALSE}
+setwd(getwd())
+library(dplyr)     # Manipulação de dados 
+library(tidyr)     # Manipulação de dados
+library(ggplot2)   # Criação de graficos
+library(readxl)     #Leitura de arquivos em Excel
+```
+
+
+# Análise dos dados de Covid por região
+```{r}
+corona = read.csv(file="HIST_PAINEL_COVIDBR_29jun2020.csv", header = TRUE,
+                              colClasses = c("character",    # Regiao
+                                            "character",    # Estado
+                                            "character",    # Municipio
+                                            "character",    # coduf
+                                            "numeric", # codmun
+                                            "numeric", # codRegiaoSaude
+                                            "character",    # nomeRegiaoSaude
+                                            "character",    # data
+                                            "numeric", # semanaEpi
+                                            "character",    # populacaoTCU2019
+                                            "double", # casosAcumulado
+                                            "double", # casosNovos
+                                            "double", # obitosAcumulado
+                                            "double", # obitosNovos
+                                            "double", # Recuperadosnovos
+                                            "double", # emAcompanhamentoNovos
+                                            "numeric" # FgMetro
+                                            ))
+corona$data = as.Date(corona$data)
+```
+
+```{r}
+#Dados por semana epidemiológica
+coronaSemana=filter(corona, !is.na(corona$estado),!is.na(corona$municipio))
+
+#Novos casos por Região
+casosPorSemana <- coronaSemana %>%
+  select(regiao,semanaEpi,casosNovos) %>%
+  group_by(regiao,semanaEpi) %>%
+  summarise(total = sum(casosNovos))
+
+ggplot(data = casosPorSemana) + 
+  geom_line(mapping = aes(x =semanaEpi, y =  total, color=regiao))+
+  geom_point(mapping = aes(x =semanaEpi, y =  total, color=regiao))+
+  scale_color_manual(values= topo.colors(5))+
+  theme_classic()+
+  labs(
+    title = "Evolução dos casos",
+    subtitle = "(Por semana epidemiológica em cada região)",
+    x = "Semana Epidemiológica",
+    y = "Nº de casos novos",
+    face = "bold",
+    color="Região",
+    caption = "Fonte: Ministério da Saúde")+
+  theme(
+    plot.title = element_text(hjust = 0.5, vjust = 1, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5,vjust = 1),
+    legend.position = "right"
+  )
+```
+  
+  
+Primeiramente gostaria de analisar o crescimento do número de casos por região do país, utilizando por métrica as semanas epidemiológicas. Podemos delimitar o Sudeste e Nordeste como pontos mais críticos dos contágio por Corona vírus, mostra o gráfico acima.   
+  
+```{r}
+#BRASIL
+coronabrasil=filter(corona, is.na(corona$estado))
+#Contando todos os casos novos do Brasil
+casosBrasil<- coronabrasil %>%
+  select(regiao,casosNovos) %>%
+  group_by(regiao) %>%
+  summarise(total = sum(casosNovos))
+
+
+#REGIÃO
+coronaregiao=filter(corona, !is.na(corona$estado),!is.na(corona$municipio))
+#Novos casos por Região
+casosPorRegiao <- coronaregiao %>%
+  select(regiao,casosNovos,obitosNovos) %>%
+  group_by(regiao) %>%
+  summarise(
+    casos = sum(casosNovos),
+    mortes = sum(obitosNovos),
+    percentual = round( (casos/casosBrasil$total*100) ,1))
+
+# GRÁFICO
+ggplot(casosPorRegiao, aes(x = regiao, y = percentual ))+ 
+  geom_bar(stat = "identity", aes(fill = regiao))+
+  geom_text(aes(label = paste(percentual,"%"), vjust = -0.4))+
+  scale_fill_manual(values= topo.colors(5))+
+  theme_classic()+
+  labs(
+    title = "COVID-19",
+    subtitle = "(Porcentagem dos casos totais do Brasil)",
+    x = "Regiões",
+    y = "Porcentagem dos casos",
+    face = "bold",
+    caption = "Fonte: Ministério da Saúde"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, vjust = +2, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5,vjust = +3),
+    legend.position = "none"
+  )
+```
+  
+  
+Ambas as regiões do Nordeste e Sudeste representam respectivamente 34,1% e 34,7% dos casos de COVID-19 de todo o Brasil, como mostra o gráfico acima.  
+
+```{r}
+# GRÁFICO
+mediaPorSemana = coronaregiao %>%
+  group_by(regiao,semanaEpi) %>%
+  summarise(total = sum(casosNovos))
+
+ggplot(mediaPorSemana, aes(x = regiao, y = total ))+ 
+  geom_boxplot(aes(fill = regiao))+
+  scale_fill_manual(values= topo.colors(5))+
+  coord_flip()+
+  theme_classic()+
+  labs(
+    title = "Valores dos novos casos por semanas epidemiológica",
+    x = "Regiões",
+    y = "Nº de novos casos",
+    face = "bold",
+    caption = "Fonte: Ministério da Saúde"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, vjust = +2, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5,vjust = +3),
+    legend.position = "none"
+  )
+```
+
+Podemos ver que os dados de novos casos apresentam uma grande heterogeneidade mas a médias de notificações por semana chegam a até um pouco mais que 20 mil.
+  
+```{r}
+#Usando GATHER, para Transpor os valores
+categoricas = gather(casosPorRegiao,
+                     "casos","mortes",
+                     key="evento",
+                     value="valores")
+
+
+ggplot(data = categoricas, aes(x = regiao, y = valores)) + 
+  geom_bar(stat = "identity",aes(fill = evento))+
+  scale_fill_manual(values= topo.colors(2))+
+  theme_classic()+
+  labs(
+    title = "Relação entre o número de novos casos e mortes*",
+    subtitle = "número de recuperados não informado*",
+    x = "Regiões",
+    y = "Número de ocorrências",
+    face = "bold",
+    caption = "Fonte: Ministério da Saúde",
+    fill = "Eventos"
+  )+
+  theme(
+    plot.title = element_text(hjust = 0.5, vjust = +2, face = "bold"),
+    plot.subtitle = element_text(size=8, color="gray30",hjust = 0.5,vjust = +3),
+    legend.position = "right"
+  )
+```
+  
+  
+Podemos ver ainda como tem sido a distribuição entre o número de novos casos e por sua vez o número de novas mortes nessas regiões. De forma que não há um equilibrio entre eles.
+

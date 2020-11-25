@@ -1,0 +1,97 @@
+---
+title: "Homework 4"
+author: "Weslley dos Santos Silva"
+output:
+  html_document: default
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE, include=TRUE}
+setwd(getwd())
+library(nycflights13)
+library(dplyr)
+flights = nycflights13::flights
+airlines = nycflights13::airlines
+```
+
+# Questão 1
+
+## A)
+```{r}
+a= filter(flights, arr_delay >= 120) %>% arrange(arr_delay)
+a
+```
+
+## B)
+```{r}
+b = filter(flights,dest =="IAH" |dest =="HOU")  %>% arrange(dest)
+b
+```
+
+## C)
+```{r}
+c = filter(flights,carrier =="UA" | carrier =="AA" | carrier =="DL")  %>% arrange(carrier)
+c
+```
+
+## D)
+```{r}
+d = filter(flights,month %in% c(7,8,9))  %>% arrange(month)
+d
+```
+
+## E)
+```{r}
+e = filter(flights, dep_delay <=0 & arr_delay >= 120) %>% arrange(dep_delay)
+e
+```
+
+## F)
+```{r}
+f = filter(flights,dep_time>=000, dep_time<=600)
+f
+```
+
+# Questão 2
+```{r}
+atrasados = arrange(flights, desc(dep_delay,arr_delay))
+atrasados
+```
+
+# Questão 3
+```{r}
+mutate(flights, velocidade = distance / air_time * 60) %>% arrange(flights, desc(velocidade))
+```
+
+# Questão 4
+A variável aparece apenas uma única vez.
+
+# Questão 5
+```{r}
+# Opção 1
+top_atrasados = arrange(flights, desc(dep_delay,arr_delay)) %>%  top_n(10,dep_delay)
+
+#Opção 2
+top_atrasados <- mutate(flights, #adiciona uma nova coluna ao dataframe
+                    delay_rank = #nome da coluna
+                      min_rank(  #essa função ranqueia de 1-n, todos os itens do data frame, é como se desse a cada linha um ID.
+                        desc(dep_delay))) #A Função min_ank receve um vetor de informações para poder criar ranking, dessa forma fornecemos para a função todas os delays dos voos para ele ordenar do menor pro maior, ou seja, o maior delay vai ter ID=1, o menor vai ter ID = n_Linhas
+top_atrasados
+```
+
+# Questão 6
+```{r}
+# Substituindo os NA por número zero
+dadosComZero = flights
+dadosComZero$air_time= ifelse(is.na(flights$air_time),0,flights$air_time)
+
+#calculando media com o mesmo numero de linhas, mas com numero zero nos NA
+calculoZero= mean(dadosComZero$air_time)
+
+mutate(flights, mean = calculoZero)
+```
+
+
